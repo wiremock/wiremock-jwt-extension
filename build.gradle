@@ -1,0 +1,84 @@
+buildscript {
+  repositories {
+    maven {
+      url "https://oss.sonatype.org"
+    }
+    mavenCentral()
+  }
+}
+
+plugins {
+  id 'idea'
+  id 'eclipse'
+  id 'project-report'
+  id 'com.diffplug.spotless' version '6.21.0'
+  id 'org.wiremock.tools.gradle.wiremock-extension-convention' version '0.2.0'
+}
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+ext {
+  versions = [
+      wiremock    : "3.5.2",
+      jwt         : '4.4.0',
+      jose4j      : '0.9.6',
+  ]
+}
+
+//allprojects {
+//  apply plugin: 'com.diffplug.spotless'
+//  spotless {
+//    java {
+//      target 'src/**/*.java'
+//      googleJavaFormat('1.17.0')
+//      ratchetFrom 'origin/main'
+//      trimTrailingWhitespace()
+//      endWithNewline()
+//      targetExclude '**/Tmp*.java'
+//    }
+//    groovyGradle {
+//      target '**/*.gradle'
+//      greclipse()
+//      indentWithSpaces(2)
+//      trimTrailingWhitespace()
+//      endWithNewline()
+//    }
+//    json {
+//      target 'src/**/*.json'
+//      targetExclude '**/tmp*.json', 'src/test/resources/sample.json', 'src/main/resources/swagger/*.json', 'src/test/resources/filesource/subdir/deepfile.json', 'src/test/resources/schema-validation/*.json'
+//      simple().indentWithSpaces(2)
+//    }
+//  }
+//}
+
+dependencies {
+  api "org.wiremock:wiremock:$versions.wiremock"
+  implementation "com.auth0:auth0:2.10.0"
+  implementation "com.auth0:java-jwt:$versions.jwt"
+  implementation "com.auth0:jwks-rsa:0.22.1"
+  implementation "org.bitbucket.b_c:jose4j:$versions.jose4j"
+  implementation 'org.apache.commons:commons-lang3:3.14.0'
+  implementation 'commons-codec:commons-codec:1.16.0'
+}
+
+shadowJar {
+  relocate "com.github.jknack", 'wiremock.com.github.jknack'
+
+  mergeServiceFiles()
+
+  exclude 'META-INF/maven/**'
+  exclude 'META-INF/versions/17/**'
+  exclude 'META-INF/versions/21/**'
+  exclude 'module-info.class'
+}
+
+test {
+  useJUnitPlatform()
+  testLogging {
+    events "PASSED", "FAILED", "SKIPPED"
+    exceptionFormat "full"
+  }
+}
