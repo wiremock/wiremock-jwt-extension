@@ -25,7 +25,7 @@ For Gradle users:
 
 ```groovy
 dependencies {
-    implementation 'org.wiremock.extensions:wiremock-jwt-extension-standalone:0.1.0'
+    implementation 'org.wiremock.extensions:wiremock-jwt-extension:0.1.0'
 }
 ```
 
