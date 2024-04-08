@@ -54,8 +54,8 @@ public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
         JWTCreator.Builder tokenBuilder = JWT.create()
                 .withExpiresAt(expiryDate)
                 .withIssuedAt(new Date())
-                .withIssuer(getOptionOrDefault(options, "iss", "mocklab"))
-                .withAudience(getOptionOrDefault(options, "aud", "mocklab.io"))
+                .withIssuer(getOptionOrDefault(options, "iss", "wiremock"))
+                .withAudience(getOptionOrDefault(options, "aud", "wiremock.io"))
                 .withSubject(getOptionOrDefault(options, "sub", "user-123"));
 
         if (options.hash.containsKey("nbf")) {

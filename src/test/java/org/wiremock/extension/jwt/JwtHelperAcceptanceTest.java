@@ -74,8 +74,8 @@ public class JwtHelperAcceptanceTest {
   void produces_default_jwt_with_100_year_lifetime_when_no_parameters_specified() {
     DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate("{{jwt}}");
 
-    assertThat(decodedJwt.getIssuer(), is("mocklab"));
-    assertThat(decodedJwt.getAudience().get(0), is("mocklab.io"));
+    assertThat(decodedJwt.getIssuer(), is("wiremock"));
+    assertThat(decodedJwt.getAudience().get(0), is("wiremock.io"));
     inLastFewSeconds(decodedJwt.getIssuedAt());
     inTheFutureFrom(decodedJwt.getExpiresAt(), decodedJwt.getIssuedAt(), 36500, DAYS);
   }
@@ -128,9 +128,9 @@ public class JwtHelperAcceptanceTest {
   @Test
   void produces_a_JWT_with_the_supplied_issuer() {
     DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate("{{jwt iss='https://jwt-example.mocklab.io/'}}");
+        verifyHs256AndDecodeForTemplate("{{jwt iss='https://jwt-example.wiremock.io/'}}");
 
-    assertThat(decodedJwt.getIssuer(), is("https://jwt-example.mocklab.io/"));
+    assertThat(decodedJwt.getIssuer(), is("https://jwt-example.wiremock.io/"));
   }
 
   @Test
@@ -143,16 +143,16 @@ public class JwtHelperAcceptanceTest {
   @Test
   void produces_a_JWT_with_the_supplied_single_audience() {
     DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate("{{jwt aud='https://jwt-target.mocklab.io/'}}");
+        verifyHs256AndDecodeForTemplate("{{jwt aud='https://jwt-target.wiremock.io/'}}");
 
-    assertThat(decodedJwt.getAudience().get(0), is("https://jwt-target.mocklab.io/"));
+    assertThat(decodedJwt.getAudience().get(0), is("https://jwt-target.wiremock.io/"));
   }
 
   @Test
   void produces_a_JWT_with_custom_claims() {
     DecodedJWT decodedJwt =
         verifyHs256AndDecodeForTemplate(
-            "{{jwt sub='superuser' isAdmin=true quota=23 score=0.96 email='superuser@example.mocklab.io' signupDate=(parseDate '2017-01-02T03:04:05Z')}}");
+            "{{jwt sub='superuser' isAdmin=true quota=23 score=0.96 email='superuser@example.wiremock.io' signupDate=(parseDate '2017-01-02T03:04:05Z')}}");
 
     assertThat(decodedJwt.getSubject(), is("superuser"));
     Map<String, Claim> claims = decodedJwt.getClaims();
@@ -160,7 +160,7 @@ public class JwtHelperAcceptanceTest {
     assertThat(claims.get("isAdmin").asBoolean(), is(true));
     assertThat(claims.get("quota").asInt(), is(23));
     assertThat(claims.get("score").asDouble(), is(0.96));
-    assertThat(claims.get("email").asString(), is("superuser@example.mocklab.io"));
+    assertThat(claims.get("email").asString(), is("superuser@example.wiremock.io"));
     assertThat(claims.get("signupDate").asDate(), is(Dates.parse("2017-01-02T03:04:05Z")));
   }
 
