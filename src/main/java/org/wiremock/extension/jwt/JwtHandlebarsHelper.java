@@ -1,11 +1,5 @@
 package org.wiremock.extension.jwt;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.JWTCreator;
-import com.github.jknack.handlebars.Options;
-import com.github.tomakehurst.wiremock.extension.responsetemplating.helpers.HandlebarsHelper;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -13,6 +7,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
+import com.github.jknack.handlebars.Options;
+import com.github.tomakehurst.wiremock.extension.responsetemplating.helpers.HandlebarsHelper;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 
 public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
 
