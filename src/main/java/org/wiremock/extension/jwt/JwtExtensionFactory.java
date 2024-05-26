@@ -12,11 +12,9 @@ public class JwtExtensionFactory implements ExtensionFactory {
     public List<Extension> create(WireMockServices services) {
         final Admin admin = services.getAdmin();
         final JwtSigningKeySettings jwtSigningKeySettings = new JwtSigningKeySettings(admin);
-        final JwtInitialiser jwtInitialiser = new JwtInitialiser(jwtSigningKeySettings);
 
         return List.of(
                 jwtSigningKeySettings,
-                jwtInitialiser,
                 new JwtHelpersExtension(jwtSigningKeySettings)
         );
     }

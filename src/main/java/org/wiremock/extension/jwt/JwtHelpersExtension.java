@@ -7,6 +7,7 @@ import java.util.Map;
 public class JwtHelpersExtension implements TemplateHelperProviderExtension {
 
     private final JwtSigningKeySettings jwtSigningKeySettings;
+    private boolean initialised = false;
 
     public JwtHelpersExtension(JwtSigningKeySettings jwtSigningKeySettings) {
         this.jwtSigningKeySettings = jwtSigningKeySettings;
@@ -22,7 +23,23 @@ public class JwtHelpersExtension implements TemplateHelperProviderExtension {
                 "jwks", jwksHandlebarsHelper
         );
     }
+    
+    @Override
+    public void start() {
+        initialise();
+    }
 
+    private void initialise() {
+        if (!initialised) {
+            synchronized (this) {
+                if (!initialised) {
+                    jwtSigningKeySettings.initialise();
+                    initialised = true;
+                }
+            }
+        }
+    }
+    
     @Override
     public String getName() {
         return "jwt-template-helpers";
