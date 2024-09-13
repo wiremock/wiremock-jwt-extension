@@ -12,7 +12,7 @@ plugins {
   id 'eclipse'
   id 'project-report'
   id 'com.diffplug.spotless' version '6.21.0'
-  id 'org.wiremock.tools.gradle.wiremock-extension-convention' version '0.2.0'
+  id 'org.wiremock.tools.gradle.wiremock-extension-convention' version '0.3.0'
 }
 
 repositories {
@@ -66,6 +66,9 @@ dependencies {
   constraints {
     implementation('com.fasterxml.jackson.core:jackson-core:2.15.0') {
       because 'version 2.14.2 brought in transitively by com.auth0:auth0@2.12.0 has CWE-400'
+    }
+    implementation('org.apache.commons:commons-compress:1.26.0') {
+      because 'version 1.24.0 brought in transitively by org.wiremock:wiremock:3.9.1 has CVE-2024-25710'
     }
   }
 }
