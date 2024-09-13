@@ -223,7 +223,7 @@ public class JwtHelperAcceptanceTest {
 
     JwkRsaKeyProvider keyProvider =
         new JwkRsaKeyProvider(
-            new ApacheBackedHttpClient(HttpClientFactory.createClient()), wm.baseUrl());
+            new ApacheBackedHttpClient(HttpClientFactory.createClient(), false), wm.baseUrl());
 
     String body = getForTemplate("{{{jwt alg='RS256'}}}");
     DecodedJWT jwt = JWT.decode(body);
