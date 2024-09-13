@@ -12,7 +12,7 @@ plugins {
   id 'eclipse'
   id 'project-report'
   id 'com.diffplug.spotless' version '6.21.0'
-  id 'org.wiremock.tools.gradle.wiremock-extension-convention' version '0.2.0'
+  id 'org.wiremock.tools.gradle.wiremock-extension-convention' version '0.3.0'
 }
 
 repositories {
