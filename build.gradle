@@ -56,12 +56,12 @@ ext {
 
 dependencies {
   api "org.wiremock:wiremock:$versions.wiremock"
-  implementation "com.auth0:auth0:2.10.0"
+  implementation "com.auth0:auth0:2.12.0"
   implementation "com.auth0:java-jwt:$versions.jwt"
   implementation "com.auth0:jwks-rsa:0.22.1"
   implementation "org.bitbucket.b_c:jose4j:$versions.jose4j"
-  implementation 'org.apache.commons:commons-lang3:3.14.0'
-  implementation 'commons-codec:commons-codec:1.16.0'
+  implementation 'org.apache.commons:commons-lang3:3.17.0'
+  implementation 'commons-codec:commons-codec:1.17.1'
 }
 
 shadowJar {
