@@ -1,0 +1,15 @@
+# Snyk (https://snyk.io) policy file, patches or ignores known vulnerabilities.
+version: v1.25.0
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  SNYK-JAVA-ORGJETBRAINSKOTLIN-2393744:
+    - '*':
+        reason: No fix available
+        expires: 2025-09-13T11:22:43.997Z
+        created: 2024-09-13T11:22:43.999Z
+  'snyk:lic:maven:junit:junit:EPL-1.0':
+    - '*':
+        reason: Not relevant, we do not repackage junit
+        expires: 2034-09-13T12:29:48.476Z
+        created: 2024-09-13T12:29:48.481Z
+patch: {}
