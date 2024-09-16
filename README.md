@@ -17,7 +17,7 @@ For Maven users:
 <dependency>
     <groupId>org.wiremock.extensions</groupId>
     <artifactId>wiremock-jwt-extension</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0</version>
 </dependency>
 ```
 
@@ -25,7 +25,7 @@ For Gradle users:
 
 ```groovy
 dependencies {
-    implementation 'org.wiremock.extensions:wiremock-jwt-extension:0.1.0'
+    implementation 'org.wiremock.extensions:wiremock-jwt-extension:0.2.0'
 }
 ```
 
