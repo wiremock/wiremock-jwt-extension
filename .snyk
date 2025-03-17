@@ -2,6 +2,16 @@
 version: v1.25.0
 # ignores vulnerabilities until expiry date; change duration by modifying expiry date
 ignore:
+  SNYK-JAVA-NETMINIDEV-8689573:
+    - '*':
+        reason: We have constrained the dependency in the build file but snyk does not seem to recognise it
+        expires: 2025-06-17T11:22:43.999Z
+        created: 2025-03-17T11:22:43.999Z
+  SNYK-JAVA-ORGECLIPSEJETTY-8186142:
+    - '*':
+        reason: We are on the latest version of jetty 11 in WireMock
+        expires: 2025-06-17T11:22:43.999Z
+        created: 2025-03-17T11:22:43.999Z
   SNYK-JAVA-ORGJETBRAINSKOTLIN-2393744:
     - '*':
         reason: No fix available

@@ -22,7 +22,7 @@ repositories {
 
 ext {
   versions = [
-      wiremock    : "3.9.2",
+      wiremock    : "3.12.1",
       jwt         : '4.4.0',
       jose4j      : '0.9.6',
   ]
@@ -70,6 +70,9 @@ dependencies {
     implementation('org.apache.commons:commons-compress:1.26.0') {
       because 'version 1.24.0 brought in transitively by org.wiremock:wiremock:3.9.1 has CVE-2024-25710'
     }
+    implementation('net.minidev:json-smart:2.5.2') {
+      because 'SNYK-JAVA-NETMINIDEV-8689573 introduced by org.wiremock:wiremock@3.12.1 > com.jayway.jsonpath:json-path@2.9.0 > net.minidev:json-smart@2.5.1'
+    }
   }
 }
 
@@ -81,6 +84,7 @@ shadowJar {
   exclude 'META-INF/maven/**'
   exclude 'META-INF/versions/17/**'
   exclude 'META-INF/versions/21/**'
+  exclude 'META-INF/versions/22/**'
   exclude 'module-info.class'
 }
 
