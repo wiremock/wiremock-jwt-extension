@@ -10,7 +10,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -98,6 +100,8 @@ public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
                         builder.withClaim(key, (Date) value);
                     } else if (value instanceof List) {
                         toArray(builder, key, (List<?>) value);
+                    } else if (value instanceof Map) {
+                        builder.withClaim(key, (Map<String, Object>) value);
                     }
                 });
     }

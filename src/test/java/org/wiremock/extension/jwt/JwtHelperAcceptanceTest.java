@@ -23,11 +23,14 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,26 +51,24 @@ public class JwtHelperAcceptanceTest {
   HttpClient client;
 
   @RegisterExtension
-  static WireMockExtension wm =
-      WireMockExtension.newInstance()
-          .options(WireMockConfiguration.options().extensions(new JwtExtensionFactory()))
-          .build();
+  static WireMockExtension wm = WireMockExtension.newInstance()
+      .options(WireMockConfiguration.options().extensions(new JwtExtensionFactory()))
+      .build();
 
   @BeforeEach
   void init() {
-    secret =
-        wm.getGlobalSettings()
-            .getSettings()
-            .getExtended()
-            .getMetadata("jwt")
-            .getString("hs256Secret");
+    secret = wm.getGlobalSettings()
+        .getSettings()
+        .getExtended()
+        .getMetadata("jwt")
+        .getString("hs256Secret");
     Algorithm hs256 = Algorithm.HMAC256(this.secret);
     hs256JwtVerifier = JWT.require(hs256).build();
 
     Algorithm rs256 = Algorithm.RSA256(rsa256KeyPair.publicKey, null);
     rs256JwtVerifier = JWT.require(rs256).build();
 
-    client = HttpClient.newBuilder().build();
+    client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(100)).build();
   }
 
   @Test
@@ -111,24 +112,46 @@ public class JwtHelperAcceptanceTest {
 
   @Test
   void produces_a_JWT_with_the_supplied_expiry_date() {
-    DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate("{{jwt exp=(parseDate '2040-02-23T21:22:23Z')}}");
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate("{{jwt exp=(parseDate '2040-02-23T21:22:23Z')}}");
 
     assertThat(decodedJwt.getExpiresAt(), is(Dates.parse("2040-02-23T21:22:23Z")));
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void produces_a_JWT_with_the_supplied_object_claims() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+        "{{jwt claims=(object role='test' inheritedRole='test')}}");
+
+    Map<String, Object> claims = decodedJwt.getClaim("claims").as(Map.class);
+    String role = (String) claims.get("role");
+    String inheritedRole = (String) claims.get("inheritedRole");
+    assertThat(role, is("test"));
+    assertThat(inheritedRole, is("test"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void produces_a_JWT_with_the_supplied_object_nested_claims() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+        "{{jwt firstLevel=(object secondLevel=(object roles=(claims 'admin' 'user' 'billing')))}}");
+
+    Map<String, Object> firstLevel = decodedJwt.getClaim("firstLevel").as(Map.class);
+    Map<String, Object> secondLevel = (Map<String, Object>) firstLevel.get("secondLevel");
+    List<String> roles = (List<String>) secondLevel.get("roles");
+    assertThat(roles, hasItems("admin", "user", "billing"));
+  }
+
+  @Test
   void produces_a_JWT_with_the_supplied_not_before_date() {
-    DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate("{{jwt nbf=(parseDate '2018-02-23T21:22:23Z')}}");
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate("{{jwt nbf=(parseDate '2018-02-23T21:22:23Z')}}");
 
     assertThat(decodedJwt.getNotBefore(), is(Dates.parse("2018-02-23T21:22:23Z")));
   }
 
   @Test
   void produces_a_JWT_with_the_supplied_issuer() {
-    DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate("{{jwt iss='https://jwt-example.wiremock.io/'}}");
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate("{{jwt iss='https://jwt-example.wiremock.io/'}}");
 
     assertThat(decodedJwt.getIssuer(), is("https://jwt-example.wiremock.io/"));
   }
@@ -142,17 +165,15 @@ public class JwtHelperAcceptanceTest {
 
   @Test
   void produces_a_JWT_with_the_supplied_single_audience() {
-    DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate("{{jwt aud='https://jwt-target.wiremock.io/'}}");
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate("{{jwt aud='https://jwt-target.wiremock.io/'}}");
 
     assertThat(decodedJwt.getAudience().get(0), is("https://jwt-target.wiremock.io/"));
   }
 
   @Test
   void produces_a_JWT_with_custom_claims() {
-    DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate(
-            "{{jwt sub='superuser' isAdmin=true quota=23 score=0.96 email='superuser@example.wiremock.io' signupDate=(parseDate '2017-01-02T03:04:05Z')}}");
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+        "{{jwt sub='superuser' isAdmin=true quota=23 score=0.96 email='superuser@example.wiremock.io' signupDate=(parseDate '2017-01-02T03:04:05Z')}}");
 
     assertThat(decodedJwt.getSubject(), is("superuser"));
     Map<String, Claim> claims = decodedJwt.getClaims();
@@ -166,9 +187,8 @@ public class JwtHelperAcceptanceTest {
 
   @Test
   void produces_a_JWT_with_custom_array_claims() {
-    DecodedJWT decodedJwt =
-        verifyHs256AndDecodeForTemplate(
-            "{{jwt roles=(claims 'admin' 'user' 'billing') magic_numbers=(claims 42 7 8)}}");
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+        "{{jwt roles=(claims 'admin' 'user' 'billing') magic_numbers=(claims 42 7 8)}}");
     Map<String, Claim> claims = decodedJwt.getClaims();
 
     assertThat(claims.get("roles").asList(String.class), hasItems("admin", "user", "billing"));
@@ -208,8 +228,7 @@ public class JwtHelperAcceptanceTest {
                             secret))))
             .build());
 
-    DecodedJWT decodedJwt =
-        Assertions.assertDoesNotThrow(() -> verifyRs256AndDecodeForTemplate("{{jwt alg='RS256'}}"));
+    DecodedJWT decodedJwt = Assertions.assertDoesNotThrow(() -> verifyRs256AndDecodeForTemplate("{{jwt alg='RS256'}}"));
 
     assertThat(decodedJwt.getAlgorithm(), is("RS256"));
   }
@@ -221,9 +240,8 @@ public class JwtHelperAcceptanceTest {
         get(urlPathEqualTo("/.well-known/jwks.json"))
             .willReturn(okJson("{{{jwks}}}").withTransformers("response-template")));
 
-    JwkRsaKeyProvider keyProvider =
-        new JwkRsaKeyProvider(
-            new ApacheBackedHttpClient(HttpClientFactory.createClient(), false), wm.baseUrl());
+    JwkRsaKeyProvider keyProvider = new JwkRsaKeyProvider(
+        new ApacheBackedHttpClient(HttpClientFactory.createClient(), false), wm.baseUrl());
 
     String body = getForTemplate("{{{jwt alg='RS256'}}}");
     DecodedJWT jwt = JWT.decode(body);
@@ -231,13 +249,11 @@ public class JwtHelperAcceptanceTest {
     JWT.require(algorithm).build().verify(jwt);
 
     URI url = URI.create(wm.baseUrl() + "/.well-known/jwks.json");
-    HttpResponse<String> response =
-        uncheck(
-            () ->
-                client.send(
-                    HttpRequest.newBuilder(url).GET().build(),
-                    HttpResponse.BodyHandlers.ofString()),
-            HttpResponse.class);
+    HttpResponse<String> response = uncheck(
+        () -> client.send(
+            HttpRequest.newBuilder(url).GET().build(),
+            HttpResponse.BodyHandlers.ofString()),
+        HttpResponse.class);
 
     Map<String, Object> jwksJson = Json.read(response.body(), Map.class);
     List<?> keys = (List<?>) jwksJson.get("keys");
@@ -267,13 +283,12 @@ public class JwtHelperAcceptanceTest {
     wm.stubFor(get(url).willReturn(ok(template).withTransformers("response-template")));
 
     URI fullUrl = URI.create(wm.baseUrl() + url);
-    HttpResponse<String> response =
-        uncheck(
-            () ->
-                client.send(
-                    HttpRequest.newBuilder(fullUrl).GET().build(),
-                    HttpResponse.BodyHandlers.ofString()),
-            HttpResponse.class);
+    HttpResponse<String> response = uncheck(
+        () -> client.send(
+            HttpRequest.newBuilder(fullUrl).GET().build(),
+            HttpResponse.BodyHandlers.ofString()),
+
+        HttpResponse.class);
 
     String data = response.body();
     System.out.println("data: " + data);
