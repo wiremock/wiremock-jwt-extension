@@ -11,7 +11,6 @@ public class ClaimsObjectHandlebarsHelper extends HandlebarsHelper<Object> {
     @Override
     public Object apply(Object context, Options options) {
         Map<String, Object> result = new HashMap<>();
-
         // Process each key-value pair from the options hash
         options.hash.forEach((key, value) -> {
             // Convert each key-value pair to a nested structure if the key contains dots
