@@ -252,6 +252,31 @@ public class JwtHelperAcceptanceTest {
     assertThat(key.get("kid"), notNullValue());
   }
 
+  @Test
+  @SuppressWarnings("unchecked")
+  void produces_a_JWT_with_the_supplied_object_claims() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+        "{{jwt claims=(claimsObject role='test' inheritedRole='test')}}");
+
+    Map<String, Object> claims = decodedJwt.getClaim("claims").as(Map.class);
+    String role = (String) claims.get("role");
+    String inheritedRole = (String) claims.get("inheritedRole");
+    assertThat(role, is("test"));
+    assertThat(inheritedRole, is("test"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void produces_a_JWT_with_the_supplied_object_nested_claims() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+        "{{jwt firstLevel=(claimsObject secondLevel=(claimsObject roles=(claims 'admin' 'user' 'billing')))}}");
+
+    Map<String, Object> firstLevel = decodedJwt.getClaim("firstLevel").as(Map.class);
+    Map<String, Object> secondLevel = (Map<String, Object>) firstLevel.get("secondLevel");
+    List<String> roles = (List<String>) secondLevel.get("roles");
+    assertThat(roles, hasItems("admin", "user", "billing"));
+  }
+
   private DecodedJWT verifyHs256AndDecodeForTemplate(String template) {
     String data = getForTemplate(template);
     return hs256JwtVerifier.verify(data);

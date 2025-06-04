@@ -19,8 +19,8 @@ public class JwtHelpersExtension implements TemplateHelperProviderExtension {
         return Map.of(
                 "jwt", jwtHandlebarsHelper,
                 "claims", new ClaimListHandlebarsHelper(),
-                "jwks", jwksHandlebarsHelper
-        );
+                "claimsObject", new ClaimsObjectHandlebarsHelper(),
+                "jwks", jwksHandlebarsHelper);
     }
 
     @Override
