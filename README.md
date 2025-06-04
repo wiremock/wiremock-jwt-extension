@@ -126,6 +126,26 @@ You can also set any custom claim you wish via named parameters e.g.
 ```
 {% endraw %}
 
+You can also add list of claims 
+
+{% raw %}
+```handlebars
+{{{jwt roles=(claims 'admin' 'user' 'billing')}}}
+```
+{% endraw %}
+
+Or even nested objects
+{% raw %}
+```handlebars
+{{{jwt access=(claimsObject roles=(claims 'admin' 'user' 'billing'))}}}
+```
+
+```handlebars
+{{jwt firstLevel=(claimsObject secondLevel=(claimsObject roles=(claims 'admin' 'user' 'billing')))}}
+```
+{% endraw %}
+
+
 ### Signing with RS256
 
 By setting the `alg` parameter, the token can be signed using the public/private key
