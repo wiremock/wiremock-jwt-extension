@@ -22,7 +22,7 @@ repositories {
 
 ext {
   versions = [
-      wiremock    : "3.12.1",
+      wiremock    : "3.13.1",
       jwt         : '4.4.0',
       jose4j      : '0.9.6',
   ]
