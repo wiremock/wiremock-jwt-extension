@@ -22,6 +22,11 @@ public class JwtHelpersExtension implements TemplateHelperProviderExtension {
                 "claimsObject", new ClaimsObjectHandlebarsHelper(),
                 "jwks", jwksHandlebarsHelper);
     }
+    
+    @Override
+    public void start() {
+        jwtSigningKeySettings.initialise();
+    }
 
     @Override
     public String getName() {
