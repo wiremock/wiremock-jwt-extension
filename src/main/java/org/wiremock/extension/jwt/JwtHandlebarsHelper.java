@@ -71,12 +71,19 @@ public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
         }
 
         String alg = options.hash.getOrDefault("alg", "HS256").toString();
+        if (!alg.equals("HS256") && !alg.equals("RS256") && !alg.equals("ES256")) {
+            return handleError("Unsupported JWT algorithm " + alg + ". Supported algorithms are HS256, RS256, and ES256");
+        }
+
+        if (alg.equals("HS256")) {
+            return tokenBuilder.sign(jwtSigningKeySettings.getHs256Algorithm());
+        }
         if (alg.equals("RS256")) {
             tokenBuilder.withKeyId(jwtSigningKeySettings.getRs256PublicKeyId());
             return tokenBuilder.sign(jwtSigningKeySettings.getRs256Algorithm());
         }
-
-        return tokenBuilder.sign(jwtSigningKeySettings.getHs256Algorithm());
+        tokenBuilder.withKeyId(jwtSigningKeySettings.getEs256PublicKeyId());
+        return tokenBuilder.sign(jwtSigningKeySettings.getEs256Algorithm());
     }
 
     @SuppressWarnings("unchecked")
