@@ -17,11 +17,23 @@ public class JwksHandlebarsHelper extends HandlebarsHelper<Object> {
 
     @Override
     public Object apply(Object context, Options options) throws IOException {
+        String alg = options.hash.getOrDefault("alg", "RS256").toString();
+        if (!alg.equals("RS256") && !alg.equals("ES256")) {
+            return handleError("Unsupported JWKS algorithm " + alg + ". Supported algorithms are RS256 and ES256");
+        }
+
         try {
-            JsonWebKey jsonWebKey = JsonWebKey.Factory.newJwk(jwtSigningKeySettings.getKeyPair().publicKey);
-            jsonWebKey.setAlgorithm("RS256");
+            JsonWebKey jsonWebKey;
+            if (alg.equals("RS256")) {
+                jsonWebKey = JsonWebKey.Factory.newJwk(jwtSigningKeySettings.getKeyPair().publicKey);
+                jsonWebKey.setKeyId(jwtSigningKeySettings.getRs256PublicKeyId());
+            } else {
+                jsonWebKey = JsonWebKey.Factory.newJwk(jwtSigningKeySettings.getEs256KeyPair().publicKey);
+                jsonWebKey.setKeyId(jwtSigningKeySettings.getEs256PublicKeyId());
+            }
+
+            jsonWebKey.setAlgorithm(alg);
             jsonWebKey.setUse("sig");
-            jsonWebKey.setKeyId(jwtSigningKeySettings.getRs256PublicKeyId());
             JsonWebKeySet jsonWebKeySet = new JsonWebKeySet(jsonWebKey);
             return jsonWebKeySet.toJson();
         } catch (JoseException e) {

@@ -23,9 +23,16 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.math.BigInteger;
+import java.security.KeyFactory;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECPoint;
+import java.security.spec.ECPublicKeySpec;
 import java.time.Instant;
 import java.time.temporal.TemporalUnit;
+import java.util.Base64;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -39,7 +46,9 @@ public class JwtHelperAcceptanceTest {
   JWTVerifier hs256JwtVerifier;
   JWTVerifier rs256JwtVerifier;
   PemEncodedKeyPair rsa256KeyPair = PemEncodedKeyPair.generate();
+  EcPemEncodedKeyPair es256KeyPair = EcPemEncodedKeyPair.generate();
   String publicKeyId = RandomStringUtils.randomAlphanumeric(30);
+  String es256PublicKeyId = RandomStringUtils.randomAlphanumeric(30);
 
   String url = "/jwt";
 
@@ -191,27 +200,53 @@ public class JwtHelperAcceptanceTest {
 
   @Test
   void supports_RS256_signed_tokens() {
-    wm.updateGlobalSettings(
-        GlobalSettings.builder()
-            .extended(
-                Parameters.from(
-                    Map.of(
-                        "jwt",
-                        Map.of(
-                            "rs256PrivateKey",
-                            rsa256KeyPair.privateKeyPem(),
-                            "rs256PublicKey",
-                            rsa256KeyPair.publicKeyPem(),
-                            "rs256PublicKeyId",
-                            publicKeyId,
-                            "hs256Secret",
-                            secret))))
-            .build());
+    Map<String, Object> jwtSettings = currentJwtSettings();
+    jwtSettings.put("rs256PrivateKey", rsa256KeyPair.privateKeyPem());
+    jwtSettings.put("rs256PublicKey", rsa256KeyPair.publicKeyPem());
+    jwtSettings.put("rs256PublicKeyId", publicKeyId);
+    updateJwtSettings(jwtSettings);
 
     DecodedJWT decodedJwt =
         Assertions.assertDoesNotThrow(() -> verifyRs256AndDecodeForTemplate("{{jwt alg='RS256'}}"));
 
     assertThat(decodedJwt.getAlgorithm(), is("RS256"));
+  }
+
+  @Test
+  void supports_ES256_signed_tokens_using_generated_settings() {
+    Map<String, Object> jwtSettings = currentJwtSettings();
+    EcPemEncodedKeyPair configuredKeyPair =
+        EcPemEncodedKeyPair.parse(
+            (String) jwtSettings.get("es256PublicKey"),
+            (String) jwtSettings.get("es256PrivateKey"));
+    Algorithm es256 = Algorithm.ECDSA256(configuredKeyPair.publicKey, null);
+
+    DecodedJWT decodedJwt =
+        JWT.require(es256).build().verify(getForTemplate("{{jwt alg='ES256'}}"));
+
+    assertThat(decodedJwt.getAlgorithm(), is("ES256"));
+    assertThat(decodedJwt.getKeyId(), is(jwtSettings.get("es256PublicKeyId")));
+  }
+
+  @Test
+  void supports_fixed_ES256_keys_and_key_id() {
+    GlobalSettings originalSettings = wm.getGlobalSettings().getSettings();
+    try {
+      Map<String, Object> jwtSettings = currentJwtSettings();
+      jwtSettings.put("es256PrivateKey", es256KeyPair.privateKeyPem());
+      jwtSettings.put("es256PublicKey", es256KeyPair.publicKeyPem());
+      jwtSettings.put("es256PublicKeyId", es256PublicKeyId);
+      updateJwtSettings(jwtSettings);
+
+      Algorithm es256 = Algorithm.ECDSA256(es256KeyPair.publicKey, null);
+      DecodedJWT decodedJwt =
+          JWT.require(es256).build().verify(getForTemplate("{{jwt alg='ES256'}}"));
+
+      assertThat(decodedJwt.getAlgorithm(), is("ES256"));
+      assertThat(decodedJwt.getKeyId(), is(es256PublicKeyId));
+    } finally {
+      wm.updateGlobalSettings(originalSettings);
+    }
   }
 
   @Test
@@ -250,6 +285,72 @@ public class JwtHelperAcceptanceTest {
     assertThat(key.get("n"), notNullValue());
     assertThat(key.get("e"), notNullValue());
     assertThat(key.get("kid"), notNullValue());
+
+    Map<String, Object> explicitJwksJson =
+        Json.read(getForTemplate("{{{jwks alg='RS256'}}}"), Map.class);
+    Map<String, Object> explicitKey =
+        (Map<String, Object>) ((List<?>) explicitJwksJson.get("keys")).get(0);
+    assertThat(explicitKey.get("alg"), is("RS256"));
+    assertThat(explicitKey.get("kid"), is(key.get("kid")));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void returns_only_the_ES256_public_key_and_uses_it_to_verify_a_token() {
+    String jwksBody = getForTemplate("{{{jwks alg='ES256'}}}");
+    Map<String, Object> jwksJson = Json.read(jwksBody, Map.class);
+    List<?> keys = (List<?>) jwksJson.get("keys");
+    assertThat(keys.size(), is(1));
+
+    Map<String, Object> key = (Map<String, Object>) keys.get(0);
+    assertThat(key.get("alg"), is("ES256"));
+    assertThat(key.get("kty"), is("EC"));
+    assertThat(key.get("crv"), is("P-256"));
+    assertThat(key.get("use"), is("sig"));
+    assertThat(key.get("kid"), notNullValue());
+    assertThat(key.get("x"), notNullValue());
+    assertThat(key.get("y"), notNullValue());
+    assertThat(key.containsKey("d"), is(false));
+
+    ECPublicKey jwksPublicKey = ecPublicKeyFromJwk(key);
+    DecodedJWT token = JWT.decode(getForTemplate("{{{jwt alg='ES256'}}}"));
+    JWT.require(Algorithm.ECDSA256(jwksPublicKey, null)).build().verify(token);
+    assertThat(token.getKeyId(), is(key.get("kid")));
+  }
+
+  @Test
+  void reports_unsupported_JWT_algorithms_as_template_errors() {
+    assertThat(
+        getForTemplate("{{jwt alg='ES512'}}"),
+        is(
+            "[ERROR: Unsupported JWT algorithm ES512. Supported algorithms are HS256, RS256, and ES256]"));
+  }
+
+  @Test
+  void reports_unsupported_JWKS_algorithms_as_template_errors() {
+    assertThat(
+        getForTemplate("{{jwks alg='HS256'}}"),
+        is(
+            "[ERROR: Unsupported JWKS algorithm HS256. Supported algorithms are RS256 and ES256]"));
+  }
+
+  @Test
+  void rejects_malformed_ES256_keys_when_settings_are_updated() {
+    GlobalSettings originalSettings = wm.getGlobalSettings().getSettings();
+    try {
+      Map<String, Object> jwtSettings = currentJwtSettings();
+      jwtSettings.put("es256PublicKey", "not a public key");
+      jwtSettings.put("es256PrivateKey", "not a private key");
+
+      IllegalArgumentException error =
+          Assertions.assertThrows(
+              IllegalArgumentException.class, () -> updateJwtSettings(jwtSettings));
+      assertThat(
+          error.getMessage(),
+          is("ES256 public and private keys must be valid P-256 X.509 and PKCS#8 PEM values"));
+    } finally {
+      wm.updateGlobalSettings(originalSettings);
+    }
   }
 
   @Test
@@ -285,6 +386,29 @@ public class JwtHelperAcceptanceTest {
   private DecodedJWT verifyRs256AndDecodeForTemplate(String template) {
     String data = getForTemplate(template);
     return rs256JwtVerifier.verify(data);
+  }
+
+  private Map<String, Object> currentJwtSettings() {
+    return new LinkedHashMap<>(
+        wm.getGlobalSettings().getSettings().getExtended().getMetadata("jwt"));
+  }
+
+  private void updateJwtSettings(Map<String, Object> jwtSettings) {
+    wm.updateGlobalSettings(
+        GlobalSettings.builder()
+            .extended(Parameters.from(Map.of("jwt", jwtSettings)))
+            .build());
+  }
+
+  private static ECPublicKey ecPublicKeyFromJwk(Map<String, Object> jwk) {
+    byte[] x = Base64.getUrlDecoder().decode((String) jwk.get("x"));
+    byte[] y = Base64.getUrlDecoder().decode((String) jwk.get("y"));
+    ECPoint point = new ECPoint(new BigInteger(1, x), new BigInteger(1, y));
+    ECPublicKeySpec keySpec =
+        new ECPublicKeySpec(point, EcPemEncodedKeyPair.generate().publicKey.getParams());
+    return uncheck(
+        () -> (ECPublicKey) KeyFactory.getInstance("EC").generatePublic(keySpec),
+        ECPublicKey.class);
   }
 
   @SuppressWarnings("unchecked")

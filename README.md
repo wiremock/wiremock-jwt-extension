@@ -146,16 +146,23 @@ Or even nested objects
 {% endraw %}
 
 
-### Signing with RS256
+### Signing algorithms
 
-By setting the `alg` parameter, the token can be signed using the public/private key
-algorithm:
+Tokens are signed with `HS256` by default. Set the `alg` parameter to use an RSA or
+elliptic-curve public/private key pair instead:
 
 {% raw %}
 ```handlebars
 {{{jwt alg='RS256'}}}
 ```
+
+```handlebars
+{{{jwt alg='ES256' maxAge='1 hour' iss='https://issuer.example/' aud='example-api' sub='user-123'}}}
+```
 {% endraw %}
+
+The supported algorithms are `HS256`, `RS256`, and `ES256`. ES256 keys use the
+P-256 (`secp256r1`) curve.
 
 ## Retrieving keys
 
@@ -182,7 +189,10 @@ keys:
         "hs256Secret": "...",
         "rs256PublicKeyId": "...",
         "rs256PublicKey": "-----BEGIN RSA PUBLIC KEY-----\n...\n-----END RSA PUBLIC KEY-----\n",
-        "rs256PrivateKey": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n"
+        "rs256PrivateKey": "-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n",
+        "es256PublicKeyId": "...",
+        "es256PublicKey": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----",
+        "es256PrivateKey": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
       }
     }
   }
@@ -191,13 +201,33 @@ keys:
 
 ### The JSON Web Key Set (JWKS)
 
-When using `RS256` (public/private key) signing, it is common for clients to fetch
-the public key for verification via a JSON Web Key Set (JWKS) endpoint. You serve
-a JWKS from your mock API simply by adding a stub containing the following response
-body (with templating enabled):
+When using `RS256` or `ES256` signing, it is common for clients to fetch the public
+key for verification via a JSON Web Key Set (JWKS) endpoint. The existing helper,
+with no parameters, continues to return the RSA public key:
 
 {% raw %}
 ```handlebars
 {{{jwks}}}
 ```
+
+This can also be requested explicitly:
+
+```handlebars
+{{{jwks alg='RS256'}}}
+```
+
+To return the ES256 P-256 public key instead:
+
+```handlebars
+{{{jwks alg='ES256'}}}
+```
 {% endraw %}
+
+The ES256 response contains one public EC key with `kty`, `crv`, `alg`, `use`,
+`kid`, `x`, and `y`. It does not expose the private `d` coordinate.
+
+To use deterministic keys in tests, set `es256PublicKeyId`, `es256PublicKey`, and
+`es256PrivateKey` under `settings.extended.jwt`. The public key must be X.509 PEM,
+the private key must be PKCS#8 PEM, and both must use P-256. When these settings are
+absent, the extension generates them without changing existing HS256 or RS256
+settings.
