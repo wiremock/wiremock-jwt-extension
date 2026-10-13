@@ -8,9 +8,12 @@ import com.github.tomakehurst.wiremock.extension.Parameters;
 import com.github.tomakehurst.wiremock.global.GlobalSettings;
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public class JwtSigningKeySettings implements GlobalSettingsListener {
-
+    private static final String PROP_RS_256_PUB_KEY_ID = "extension.jwt.rs256.publicKeyId";
+    private static final String PROP_RS_256_PRIV_KEY_FILE = "extension.jwt.rs256.privateKeyFile";
+    private static final String PROP_HS_256_SEC_KEY_VALUE = "extension.jwt.hs256.secretKeyValue";
     public static final String HS_256_SECRET = "hs256Secret";
     public static final String RS_256_PUBLIC_KEY_ID = "rs256PublicKeyId";
     public static final String RS_256_PUBLIC_KEY = "rs256PublicKey";
@@ -49,9 +52,13 @@ public class JwtSigningKeySettings implements GlobalSettingsListener {
         Parameters extendedSettings = existingSettings.getExtended();
 
         if (extendedSettings == null || !extendedSettings.containsKey("jwt")) {
-            String publicKeyId = RandomStringUtils.randomAlphanumeric(30);
-            PemEncodedKeyPair keyPair = PemEncodedKeyPair.generate();
-            String hs256Secret = RandomStringUtils.randomAlphanumeric(36);
+            String publicKeyId = StringUtils.firstNonBlank(
+                    System.getProperty(PROP_RS_256_PUB_KEY_ID),
+                    RandomStringUtils.randomAlphanumeric(30));
+            PemEncodedKeyPair keyPair = PemEncodedKeyPair.resolve(System.getProperty(PROP_RS_256_PRIV_KEY_FILE));
+            String hs256Secret = StringUtils.firstNonBlank(
+                    System.getProperty(PROP_HS_256_SEC_KEY_VALUE),
+                    RandomStringUtils.randomAlphanumeric(36));
 
             Parameters jwt = Parameters.from(ImmutableMap.of(
                     HS_256_SECRET, hs256Secret,

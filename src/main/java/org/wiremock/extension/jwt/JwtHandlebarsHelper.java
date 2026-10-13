@@ -16,13 +16,16 @@ import java.util.Optional;
 import java.util.Set;
 
 public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
+    private static final String CUSTOM_JWT_HEADER_NAME = System.getProperty(
+            "extension.jwt.header.name", "header");
 
     private static final Set<String> RESERVED_PARAMETERS = ImmutableSet.of(
             "exp",
             "iss",
             "aud",
             "sub",
-            "nbf"
+            "nbf",
+            CUSTOM_JWT_HEADER_NAME
     );
 
     private static final Set<Class<?>> ALLOWED_ARRAY_TYPES = ImmutableSet.of(
@@ -70,6 +73,12 @@ public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
             return handleError(e.getMessage(), e);
         }
 
+        try {
+            addCustomHeaderIfNeeded(tokenBuilder, options);
+        } catch (Exception e) {
+            return handleError(e.getMessage(), e);
+        }
+
         String alg = options.hash.getOrDefault("alg", "HS256").toString();
         if (alg.equals("RS256")) {
             tokenBuilder.withKeyId(jwtSigningKeySettings.getRs256PublicKeyId());
@@ -77,6 +86,13 @@ public class JwtHandlebarsHelper extends HandlebarsHelper<Object> {
         }
 
         return tokenBuilder.sign(jwtSigningKeySettings.getHs256Algorithm());
+    }
+
+    private void addCustomHeaderIfNeeded(JWTCreator.Builder tokenBuilder, Options options) {
+        Object headers = options.hash.get(CUSTOM_JWT_HEADER_NAME);
+        if (headers instanceof Map) {
+            tokenBuilder.withHeader((Map) headers);
+        }               // else use default as before
     }
 
     @SuppressWarnings("unchecked")

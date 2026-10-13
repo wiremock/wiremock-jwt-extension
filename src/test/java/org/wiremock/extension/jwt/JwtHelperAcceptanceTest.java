@@ -11,6 +11,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Dates;
 import com.github.tomakehurst.wiremock.common.Json;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -25,6 +26,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.time.temporal.TemporalUnit;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +52,10 @@ public class JwtHelperAcceptanceTest {
   @RegisterExtension
   static WireMockExtension wm =
       WireMockExtension.newInstance()
-          .options(WireMockConfiguration.options().extensions(new JwtExtensionFactory()))
+          .options(
+              WireMockConfiguration.options()
+                  .dynamicPort()
+                  .extensions(new JwtExtensionFactory()))
           .build();
 
   @BeforeEach
@@ -276,6 +281,60 @@ public class JwtHelperAcceptanceTest {
     List<String> roles = (List<String>) secondLevel.get("roles");
     assertThat(roles, hasItems("admin", "user", "billing"));
   }
+
+  @Test
+  void produces_a_JWT_with_default_header() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+            "{{jwt scope=(claims 'admin' 'user' 'billing') custom_claim='abc'}}");
+
+    assertThat(decodedJwt.getClaim("scope").asList(String.class), hasItems("admin", "user", "billing"));
+    assertThat(decodedJwt.getClaim("custom_claim").asString(), is("abc"));
+    Map<String, Object> header = parseHeaderAsJsonMap(decodedJwt.getHeader());
+    assertThat(header.size(), is(2));
+    assertThat(header.get("alg"), is("HS256"));
+    assertThat(header.get("typ"), is("JWT"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void produces_a_JWT_with_custom_header_without_override_defaults() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+            "{{jwt header=(claimsObject custom_header1='abc' custom_header2=(claims 'item1' 'item2'))}}");
+
+    Map<String, Object> header = parseHeaderAsJsonMap(decodedJwt.getHeader());
+    assertThat(header.size(), is(4));
+    assertThat(header.get("custom_header1"), is("abc"));
+    assertThat((List<String>)header.get("custom_header2"), hasItems("item1", "item2"));
+    assertThat(header.get("alg"), is("HS256"));
+    assertThat(header.get("typ"), is("JWT"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void produces_a_JWT_with_custom_header_override_defaults() {
+    DecodedJWT decodedJwt = verifyHs256AndDecodeForTemplate(
+            "{{jwt header=(claimsObject alg='HS384' typ='JOSE+JSON' custom_header1='abc' custom_header2=(claims 'item1' 'item2'))}}");
+
+    Map<String, Object> header = parseHeaderAsJsonMap(decodedJwt.getHeader());
+    assertThat(header.size(), is(4));
+    assertThat(header.get("custom_header1"), is("abc"));
+    assertThat((List<String>)header.get("custom_header2"), hasItems("item1", "item2"));
+    assertThat(header.get("typ"), is("JOSE+JSON"));
+    assertThat(header.get("alg"), is("HS256"));
+  }
+
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> parseHeaderAsJsonMap(String base64EncodedHeader) {
+    String jsonStr = new String(Base64.getDecoder().decode(base64EncodedHeader));
+    ObjectMapper mapper = new ObjectMapper();
+    try {
+      return (Map<String, Object>)mapper.readValue(jsonStr, Map.class);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to parse JWT header", e);
+    }
+  }
+
 
   private DecodedJWT verifyHs256AndDecodeForTemplate(String template) {
     String data = getForTemplate(template);
